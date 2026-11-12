@@ -138,18 +138,20 @@ int get_key(char *filename, char *section, char *key, char *result) {
     // I know, I could just pass in the section names properly formatted and
     // skipthis step, but I figure this makes the code a bit easier to read
     //
+    // section_len is the length of the formatted "[section]" string, used
+    // below for the strncmp compare. The buffer needs one extra byte for the
+    // terminating '\0'; the original code omitted it, overflowing the stack
+    // buffer by one byte on every lookup (crashes under ASan / intermittently).
     int section_len = strnlen(section,50) + 2;
-    char section_name[section_len];
-    strncpy(section_name, "[", section_len);
-    strncat(section_name, section, section_len);
-    strncat(section_name, "]", section_len);
-    
+    char section_name[section_len + 1];
+    snprintf(section_name, section_len + 1, "[%s]", section);
+
     // Also get the length of the key for comparision, and format it
-    // with the trailing " = "
+    // with the trailing " = ". key_len is the compare/offset length; the
+    // buffer again needs one extra byte for the terminating '\0'.
     int key_len = strnlen(key,50) + 3;
-    char key_name[key_len];
-    strncpy(key_name, key, key_len);
-    strncat(key_name, " = ", key_len);
+    char key_name[key_len + 1];
+    snprintf(key_name, key_len + 1, "%s = ", key);
     
     // Holds the current line in the config file
     char buff[MAX_CONFIG_LINE];
@@ -180,10 +182,18 @@ int get_key(char *filename, char *section, char *key, char *result) {
               
                 //Copy the result minus the key name to result
                 strncpy(result, buff + key_len, MAX_CONFIG_LINE);
-                
+
                 //strip off the trailing newlines and return success
+                //Note: handle LF (Unix) and CRLF (Windows) and a missing
+                //trailing newline (last line of file) rather than assuming
+                //a fixed 2-char CRLF, which corrupted every value on Unix
+                //rulesets (e.g. "utf-8" -> "utf-").
                 int result_len = strnlen(result,MAX_CONFIG_LINE);
-                result[result_len-2] = '\0';
+                while (result_len > 0 &&
+                       (result[result_len-1] == '\n' || result[result_len-1] == '\r')) {
+                    result[result_len-1] = '\0';
+                    result_len--;
+                }
                 fclose(config);
                 return 0;
             }

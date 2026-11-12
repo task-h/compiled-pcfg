@@ -110,7 +110,10 @@ int main(int argc, char *argv[]) {
     print_banner(program_info.version);
     
     // Create the empty grammar
-    PcfgGrammar pcfg;
+    // Zero-initialize so every terminal slot that is never loaded (e.g. a
+    // category with no terminals, or an id skipped as an empty file) is a
+    // well-defined NULL rather than an uninitialized stack value.
+    PcfgGrammar pcfg = {0};
     
     
     // Intiazlie the grammar and Priority Queue

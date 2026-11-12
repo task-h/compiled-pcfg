@@ -253,7 +253,22 @@ int load_terminal(char *config_filename, char *base_directory, char *structure, 
         
         char filename[PATH_MAX];
         snprintf(filename, PATH_MAX, "%s%s%c%s", base_directory,section_folder,SLASH,result[i]);
-        
+
+        // Skip empty terminal files. A category can legitimately have no
+        // terminals for a given length (e.g. the trainer emits an empty
+        // Context/1.txt when no context-sensitive strings were seen). The
+        // grammar will not reference this id, so leaving grammar_item[id] as
+        // NULL is correct; load_term_from_file would otherwise treat the empty
+        // file as a fatal malformed-ruleset error.
+        FILE *empty_check = fopen(filename, "r");
+        if (empty_check != NULL) {
+            int first_char = fgetc(empty_check);
+            fclose(empty_check);
+            if (first_char == EOF) {
+                continue;
+            }
+        }
+
         grammar_item[id] = load_term_from_file(filename, type, id);
         
         if (grammar_item[id] == NULL) {
