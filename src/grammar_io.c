@@ -241,10 +241,18 @@ int load_terminal(char *config_filename, char *base_directory, char *structure, 
         }
          
         // Make sure the id falls within the acceptable range
-        if (id <= 0) {
+        if (id < 0) {
             fprintf(stderr, "Invalid File name found in rules. Exiting\n");
             return 1;
-        }      
+        }
+        // id == 0 is a zero-length terminal (e.g. Other/0.txt holding the
+        // empty string). The newer Python trainer emits these on large
+        // datasets, but the base-structure grammar never references a
+        // length-0 segment and the generator indexes terminals by positive
+        // length, so skip it rather than aborting the whole load.
+        if (id == 0) {
+            continue;
+        }
 
         // Make sure the value isn't too long for the current compiled pcfg_guesser
         if (id > MAX_TERM_LENGTH) {

@@ -35,6 +35,15 @@ The upstream code only worked with CRLF rulesets and crashed on Linux.
    struct in `main()` is zero-initialized (`= {0}`) so unloaded terminal
    slots are well-defined `NULL`.
 
+4. **`src/grammar_io.c` — zero-length terminal (`id == 0`) was rejected.**
+   On large datasets the trainer emits a length-0 terminal (e.g.
+   `Other/0.txt` holding the empty string). `load_terminal()` treated the
+   filename id `0` as invalid and aborted (`"Invalid File name found in
+   rules"`). The base-structure grammar never references a length-0 segment
+   and the generator indexes terminals by positive length, so such files are
+   now skipped. Without this, generating from a full rockyou.txt ruleset
+   (~14.3M passwords) failed to load.
+
 To reproduce the build and run:
 
 ```sh
